@@ -1,7 +1,6 @@
-// routes/authentication.js
-const express            = require('express');
-const router             = express.Router();
-const passport           = require('passport');
+const express    = require('express');
+const passport   = require('passport');
+const router     = express.Router();
 const { ensureLoggedIn, ensureLoggedOut } = require('connect-ensure-login');
 
 router.get('/login', ensureLoggedOut(), (req, res) => {
@@ -22,10 +21,15 @@ router.post('/signup', ensureLoggedOut(), passport.authenticate('local-signup', 
   failureRedirect : '/signup'
 }));
 
+router.get('/profile', ensureLoggedIn('/login'), (req, res) => {
+    res.render('authentication/profile', {
+        user : req.user
+    });
+});
+
 router.post('/logout', ensureLoggedIn('/login'), (req, res) => {
     req.logout();
     res.redirect('/');
 });
-
 
 module.exports = router;
