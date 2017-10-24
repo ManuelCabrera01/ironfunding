@@ -1,4 +1,3 @@
-// models/campaign-types.js
 module.exports = [
   "Artisanal",
   "Bikes",
