@@ -1,19 +1,19 @@
-// routes/campaigns.js
+const express                = require('express');
+const moment                 = require('moment');
+const Campaign               = require('../models/campaign');
+const TYPES                  = require('../models/campaign-types');
+const { ensureLoggedIn }     = require('connect-ensure-login');
+const {
+  authorizeCampaign,
+  checkOwnership
+  }                          = require('../middleware/campaign-middleware');
+const router  = express.Router();
 
-const express  = require('express');
-const Campaign = require('../models/campaign');
-const TYPES    = require('../models/campaign-types');
-const router              = express.Router();
-const { ensureLoggedIn }  = require('connect-ensure-login');
-//const authorizeCampaign                    = require('../middleware/campaign-authorization');
-const { authorizeCampaign,checkOwnership } = require('../middleware/campaign-authorization');
-// routes/campaigns.js
 
-// other code
-router.get('/new', (req, res) => {
+router.get('/new', ensureLoggedIn('/login'), (req, res, next) => {
   res.render('campaigns/new', { types: TYPES });
 });
-// other code
+
 router.post('/', ensureLoggedIn('/login'), (req, res, next) => {
   const newCampaign = new Campaign({
     title: req.body.title,
@@ -21,9 +21,7 @@ router.post('/', ensureLoggedIn('/login'), (req, res, next) => {
     description: req.body.description,
     category: req.body.category,
     deadline: req.body.deadline,
-    // We're assuming a user is logged in here
-    // If they aren't, this will throw an error
-    _creator: req.user._id
+    creator: req.user._id
   });
 
   newCampaign.save( (err) => {
@@ -35,15 +33,40 @@ router.post('/', ensureLoggedIn('/login'), (req, res, next) => {
   });
 });
 
-router.get('/:id/edit', ensureLoggedIn('/login'), authorizeCampaign, (req, res, next) => {
+router.get('/:id', checkOwnership, (req, res, next) => {
   Campaign.findById(req.params.id, (err, campaign) => {
-    if (err)       { return next(err) }
-    if (!campaign) { return next(new Error("404")) }
-    return res.render('campaigns/edit', { campaign, types: TYPES })
+    if (err){ return next(err); }
+
+    campaign.populate('creator', (err, campaign) => {
+      if (err){ return next(err); }
+
+      return res.render('campaigns/show', { campaign });
+    });
+
   });
 });
 
-router.post('/:id', ensureLoggedIn('/login'), authorizeCampaign, (req, res, next) => {
+router.get('/:id/edit',
+  [
+    ensureLoggedIn('/login'),
+    authorizeCampaign,
+  ],
+  (req, res, next) => {
+  Campaign.findById(req.params.id, (err, campaign) => {
+    if (err)       { return next(err) }
+    if (!campaign) { return next(new Error("404")) }
+
+    let campaignDate = moment(campaign.deadline).format('YYYY-MM-DD');
+    return res.render('campaigns/edit', { campaign, campaignDate, types: TYPES })
+  });
+});
+
+router.post('/:id',
+  [
+    ensureLoggedIn('/login'),
+    authorizeCampaign
+  ],
+  (req, res, next) => {
   const updates = {
     title: req.body.title,
     goal: req.body.goal,
@@ -53,28 +76,10 @@ router.post('/:id', ensureLoggedIn('/login'), authorizeCampaign, (req, res, next
   };
 
   Campaign.findByIdAndUpdate(req.params.id, updates, (err, campaign) => {
-    if (err) {
-      return res.render('campaigns/edit', {
-        campaign,
-        errors: campaign.errors
-      });
-    }
-    if (!campaign) {
-      return next(new Error('404'));
-    }
+    if (err)       { return res.render('campaigns/edit', { campaign, errors: campaign.errors }); }
+    if (!campaign) { return next(new Error("404")); }
     return res.redirect(`/campaigns/${campaign._id}`);
   });
 });
 
-
-router.get('/:id', checkOwnership, (req, res, next) => {
-  Campaign.findById(req.params.id, (err, campaign) => {
-    if (err){ return next(err); }
-
-    campaign.populate('_creator', (err, campaign) => {
-      if (err){ return next(err); }
-      return res.render('campaigns/show', { campaign });
-    });
-  });
-});
 module.exports = router;
