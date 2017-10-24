@@ -1,4 +1,3 @@
-// models/reward.js
 const mongoose = require('mongoose');
 const User     = require('./user');
 const Campaign = require('./campaign');
@@ -13,13 +12,9 @@ const RewardSchema = new Schema({
   bidders    : [ { type: Schema.Types.ObjectId,  ref: 'User' } ]
 });
 
-RewardSchema.methods.biddedOnBy = function(user){
-  return this.bidders.some(bidderId => bidderId.equals(user._id));
-}
-
 RewardSchema.methods.registerWithCampaign = function(amount, cb){
   const campaignId = this._campaign;
-  mongoose.model.Campaign.findByIdAndUpdate(campaignId, {
+  mongoose.models.Campaign.findByIdAndUpdate(campaignId, {
     $inc: { totalPledged: amount, backerCount: 1 }
     }, (err) => {
     if (!err){
@@ -28,6 +23,10 @@ RewardSchema.methods.registerWithCampaign = function(amount, cb){
       return cb(err);
     }
   })
+}
+
+RewardSchema.methods.biddedOnBy = function(user){
+  return this.bidders.some(bidderId => bidderId.equals(user._id));
 }
 
 const Reward = mongoose.model('Reward', RewardSchema);

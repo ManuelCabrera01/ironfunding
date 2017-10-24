@@ -1,14 +1,25 @@
-// models/user.js
 const mongoose = require('mongoose');
+const bcrypt   = require('bcrypt-nodejs');
 const Schema   = mongoose.Schema;
 
-const userSchema = new Schema({
-  email      : String,
-  username   : String,
-  password   : String,
+const UserSchema = new Schema({
+  email   : String,
+  password: String,
+  username: String,
   description: String,
-  imgUrl     : { type: String, default: "https://placeholdit.imgix.net/~text?txtsize=33&txt=250%C3%97250&w=250&h=250" }
+  picPath: String,
+  picName: String
 });
 
-const User = mongoose.model('User', userSchema);
+UserSchema.methods.generateHash = function(password) {
+    return bcrypt.hashSync(password, bcrypt.genSaltSync(8), null);
+};
+
+// checking if password is valid
+UserSchema.methods.validPassword = function(password) {
+    return bcrypt.compareSync(password, this.local.password);
+};
+
+const User = mongoose.model('User', UserSchema);
+
 module.exports = User;
